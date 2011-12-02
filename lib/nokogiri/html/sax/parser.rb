@@ -30,21 +30,19 @@ module Nokogiri
         # Parse html stored in +data+ using +encoding+
         def parse_memory data, encoding = 'UTF-8'
           raise ArgumentError unless data
-          return unless data.length > 0
-          ctx = ParserContext.memory(data, encoding)
-          yield ctx if block_given?
-          ctx.parse_with self
+          parser = PushParser.new(@document, @filename, encoding)
+          parser.force_encoding(encoding) if encoding
+          yield parser if block_given?
+          parser.write(data, true) rescue nil
         end
 
         ###
-        # Parse a file with +filename+
-        def parse_file filename, encoding = 'UTF-8'
-          raise ArgumentError unless filename
-          raise Errno::ENOENT unless File.exists?(filename)
-          raise Errno::EISDIR if File.directory?(filename)
-          ctx = ParserContext.file(filename, encoding)
-          yield ctx if block_given?
-          ctx.parse_with self
+        # Parse given +io+
+        def parse_io io, encoding = 'UTF-8'
+          parser = PushParser.new(@document, @filename, encoding)
+          parser.force_encoding(encoding) if encoding
+          yield parser if block_given?
+          _parse_io(parser, io)
         end
       end
     end

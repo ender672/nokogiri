@@ -5,5 +5,7 @@
 
 void init_xml_sax_push_parser();
 
-extern VALUE cNokogiriXmlSaxPushParser ;
+extern VALUE cNokogiriXmlSaxPushParser;
+
 #endif
+

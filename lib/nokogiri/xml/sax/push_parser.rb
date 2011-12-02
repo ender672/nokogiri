@@ -23,37 +23,8 @@ module Nokogiri
       #   parser << "/div>"
       #   parser.finish
       class PushParser
-
-        # The Nokogiri::XML::SAX::Document on which the PushParser will be
-        # operating
-        attr_accessor :document
-
-        ###
-        # Create a new PushParser with +doc+ as the SAX Document, providing
-        # an optional +file_name+ and +encoding+
-        def initialize(doc = XML::SAX::Document.new, file_name = nil, encoding = 'UTF-8')
-          @document = doc
-          @encoding = encoding
-          @sax_parser = XML::SAX::Parser.new(doc)
-
-          ## Create our push parser context
-          initialize_native(@sax_parser, file_name)
-        end
-
-        ###
-        # Write a +chunk+ of XML to the PushParser.  Any callback methods
-        # that can be called will be called immediately.
-        def write chunk, last_chunk = false
-          native_write(chunk, last_chunk)
-        end
-        alias :<< :write
-
-        ###
-        # Finish the parsing.  This method is only necessary for
-        # Nokogiri::XML::SAX::Document#end_document to be called.
-        def finish
-          write '', true
-        end
+        class Attribute < Struct.new(:localname, :prefix, :uri, :value)
+        end        
       end
     end
   end
