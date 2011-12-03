@@ -243,26 +243,30 @@ static void deallocate(xmlSAXHandlerPtr handler)
   NOKOGIRI_DEBUG_END(handler);
 }
 
-static VALUE allocate(VALUE klass)
+static VALUE
+allocate(VALUE klass)
 {
-  xmlSAXHandlerPtr handler = calloc((size_t)1, sizeof(xmlSAXHandler));
+    VALUE self;
+    xmlSAXHandlerPtr handler;
 
-  xmlSetStructuredErrorFunc(NULL, NULL);
+    self = Data_Make_Struct(klass, xmlSAXHandler, 0, deallocate, handler);
 
-  handler->startDocument = start_document;
-  handler->endDocument = end_document;
-  handler->startElement = start_element;
-  handler->endElement = end_element;
-  handler->startElementNs = start_element_ns;
-  handler->endElementNs = end_element_ns;
-  handler->characters = characters_func;
-  handler->comment = comment_func;
-  handler->warning = warning_func;
-  handler->error = error_func;
-  handler->cdataBlock = cdata_block;
-  handler->initialized = XML_SAX2_MAGIC;
+    xmlSetStructuredErrorFunc(NULL, NULL);
 
-  return Data_Wrap_Struct(klass, NULL, deallocate, handler);
+    handler->startDocument = start_document;
+    handler->endDocument = end_document;
+    handler->startElement = start_element;
+    handler->endElement = end_element;
+    handler->startElementNs = start_element_ns;
+    handler->endElementNs = end_element_ns;
+    handler->characters = characters_func;
+    handler->comment = comment_func;
+    handler->warning = warning_func;
+    handler->error = error_func;
+    handler->cdataBlock = cdata_block;
+    handler->initialized = XML_SAX2_MAGIC;
+
+    return self;
 }
 
 VALUE cNokogiriXmlSaxParser ;
