@@ -44,6 +44,7 @@ initialize_native(VALUE self, VALUE _xml_sax, VALUE _filename, VALUE encoding)
     const char * filename = NULL;
     htmlParserCtxtPtr ctx;
     xmlCharEncoding enc = (xmlCharEncoding)NUM2INT(encoding);
+    xmlCharEncodingHandlerPtr enc_handler;
 
     Data_Get_Struct(_xml_sax, xmlSAXHandler, sax);
 
@@ -51,6 +52,12 @@ initialize_native(VALUE self, VALUE _xml_sax, VALUE _filename, VALUE encoding)
 	filename = StringValuePtr(_filename);
 
     ctx = htmlCreatePushParserCtxt(sax, NULL, NULL, 0, filename, enc);
+
+    if (enc) {
+	    enc_handler = xmlFindCharEncodingHandler(xmlGetCharEncodingName(enc));
+	    if (xmlSwitchToEncoding(ctx, enc_handler))
+		    rb_raise(rb_eRuntimeError, "Unsupported encoding");
+    }
 
     if (ctx == NULL)
 	rb_raise(rb_eRuntimeError, "Could not create a parser context");
