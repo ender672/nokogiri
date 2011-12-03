@@ -51,7 +51,7 @@ static VALUE native_write(VALUE self, VALUE _chunk, VALUE _last_chunk)
  *
  * Initialize the push parser with +xml_sax+ using +filename+
  */
-static VALUE initialize_native(VALUE self, VALUE _xml_sax, VALUE _filename)
+static VALUE initialize_native(VALUE self, VALUE _xml_sax, VALUE _filename, VALUE enc)
 {
   xmlSAXHandlerPtr sax;
   const char * filename = NULL;
@@ -97,19 +97,101 @@ static VALUE set_options(VALUE self, VALUE options)
   return Qnil;
 }
 
-VALUE cNokogiriXmlSaxPushParser ;
-void init_xml_sax_push_parser()
+/*
+ * call-seq:
+ *  replace_entities=(boolean)
+ *
+ * Should this parser replace entities?  &amp; will get converted to '&' if
+ * set to true
+ */
+static VALUE set_replace_entities(VALUE self, VALUE value)
 {
-  VALUE nokogiri = rb_define_module("Nokogiri");
-  VALUE xml = rb_define_module_under(nokogiri, "XML");
-  VALUE sax = rb_define_module_under(xml, "SAX");
-  VALUE klass = rb_define_class_under(sax, "PushParser", rb_cObject);
+  xmlParserCtxtPtr ctxt;
+  Data_Get_Struct(self, xmlParserCtxt, ctxt);
 
-  cNokogiriXmlSaxPushParser = klass;
+  if(Qfalse == value)
+    ctxt->replaceEntities = 0;
+  else
+    ctxt->replaceEntities = 1;
 
-  rb_define_alloc_func(klass, allocate);
-  rb_define_private_method(klass, "initialize_native", initialize_native, 2);
-  rb_define_private_method(klass, "native_write", native_write, 2);
-  rb_define_method(klass, "options", get_options, 0);
-  rb_define_method(klass, "options=", set_options, 1);
+  return value;
+}
+
+/*
+ * call-seq:
+ *  replace_entities
+ *
+ * Should this parser replace entities?  &amp; will get converted to '&' if
+ * set to true
+ */
+static VALUE get_replace_entities(VALUE self)
+{
+  xmlParserCtxtPtr ctxt;
+  Data_Get_Struct(self, xmlParserCtxt, ctxt);
+
+  if(0 == ctxt->replaceEntities)
+    return Qfalse;
+  else
+    return Qtrue;
+}
+
+/*
+ * call-seq: line
+ *
+ * Get the current line the parser context is processing.
+ */
+static VALUE line(VALUE self)
+{
+  xmlParserCtxtPtr ctxt;
+  xmlParserInputPtr io;
+
+  Data_Get_Struct(self, xmlParserCtxt, ctxt);
+
+  io = ctxt->input;
+  if(io)
+    return INT2NUM(io->line);
+
+  return Qnil;
+}
+
+/*
+ * call-seq: column
+ *
+ * Get the current column the parser context is processing.
+ */
+static VALUE column(VALUE self)
+{
+  xmlParserCtxtPtr ctxt;
+  xmlParserInputPtr io;
+
+  Data_Get_Struct(self, xmlParserCtxt, ctxt);
+
+  io = ctxt->input;
+  if(io)
+    return INT2NUM(io->col);
+
+  return Qnil;
+}
+
+VALUE cNokogiriXmlSaxPushParser;
+
+void
+init_xml_sax_push_parser()
+{
+    VALUE nokogiri = rb_define_module("Nokogiri");
+    VALUE xml = rb_define_module_under(nokogiri, "XML");
+    VALUE sax = rb_define_module_under(xml, "SAX");
+    VALUE klass = rb_define_class_under(sax, "PushParser", rb_cObject);
+
+    cNokogiriXmlSaxPushParser = klass;
+
+    rb_define_alloc_func(klass, allocate);
+    rb_define_private_method(klass, "initialize_native", initialize_native, 3);
+    rb_define_private_method(klass, "native_write", native_write, 2);
+    rb_define_method(klass, "options", get_options, 0);
+    rb_define_method(klass, "options=", set_options, 1);
+    rb_define_method(klass, "replace_entities=", set_replace_entities, 1);
+    rb_define_method(klass, "replace_entities", get_replace_entities, 0);
+    rb_define_method(klass, "line", line, 0);
+    rb_define_method(klass, "column", column, 0);
 }

@@ -37,7 +37,7 @@ module Nokogiri
           @sax_parser = XML::SAX::Parser.new(doc)
 
           ## Create our push parser context
-          initialize_native(@sax_parser, file_name)
+          initialize_native(@sax_parser, file_name, Parser::ENCODINGS[@encoding] || 0)
         end
 
         ###

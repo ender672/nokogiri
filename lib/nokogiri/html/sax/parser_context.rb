@@ -6,9 +6,11 @@ module Nokogiri
       # by the user.  Instead, you should be looking at
       # Nokogiri::HTML::SAX::Parser
       class ParserContext < Nokogiri::XML::SAX::ParserContext
-        def self.new thing, encoding = 'UTF-8'
-          [:read, :close].all? { |x| thing.respond_to?(x) } ?  super :
-            memory(thing, encoding)
+        def parse_with(parser)
+          raise ArgumentError if parser.nil?
+
+          @push_parser = Nokogiri::HTML::SAX::PushParser.new(parser.document, nil, @encoding)
+          parse_with2
         end
       end
     end
