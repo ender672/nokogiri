@@ -26,25 +26,35 @@ module Nokogiri
       #
       # For more information on SAX parsers, see Nokogiri::XML::SAX
       class Parser < Nokogiri::XML::SAX::Parser
-        ###
-        # Parse html stored in +data+ using +encoding+
-        def parse_memory data, encoding = 'UTF-8'
-          raise ArgumentError unless data
-          return unless data.length > 0
-          ctx = ParserContext.memory(data, encoding)
-          yield ctx if block_given?
-          ctx.parse_with self
+        # Create a new Parser with +doc+ and +encoding+
+        def initialize doc = Nokogiri::HTML::SAX::Document.new, encoding = 'UTF-8'
+          super(doc, encoding)
         end
 
         ###
-        # Parse a file with +filename+
-        def parse_file filename, encoding = 'UTF-8'
-          raise ArgumentError unless filename
-          raise Errno::ENOENT unless File.exists?(filename)
-          raise Errno::EISDIR if File.directory?(filename)
-          ctx = ParserContext.file(filename, encoding)
-          yield ctx if block_given?
-          ctx.parse_with self
+        # Parse given +io+
+        def parse_io io, encoding = 'ASCII'
+          @encoding = encoding
+          parser = get_parser
+          yield parser if block_given?
+          _parse_io(parser, io)
+        end
+
+        def parse_memory data, encoding = 'UTF-8'
+          raise ArgumentError if data.nil?
+          raise "data cannot be empty" if data.empty?
+          @encoding = encoding
+          parser = get_parser
+          yield parser if block_given?
+          parser.write(data, true) rescue nil
+        end
+
+        private
+
+        def get_parser
+          enc_id = Nokogiri::XML::SAX::Parser::ENCODINGS[encoding]
+          native_parser = NativeParser.new(@document, @filename, enc_id)
+          native_parser.force_encoding(enc_id)
         end
       end
     end

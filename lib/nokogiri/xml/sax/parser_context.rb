@@ -6,10 +6,12 @@ module Nokogiri
       # by the user.  Instead, you should be looking at
       # Nokogiri::XML::SAX::Parser
       class ParserContext
+        attr_accessor :replace_entities
+
         def initialize(thing, encoding = 'UTF-8')
           @thing = thing
           @encoding = encoding
-          @push_parser = nil
+          @parser = nil
           @replace_entities = nil
         end
 
@@ -30,45 +32,18 @@ module Nokogiri
 
         def parse_with(parser)
           raise ArgumentError if parser.nil?
-
-          @push_parser = PushParser.new(parser.document)
-          parse_with2
-        end
-
-        def parse_with2
-          @push_parser.replace_entities = @replace_entities if @replace_entities
-          yield @push_parser if block_given?
-
-          if @thing.respond_to?(:read)
-            while((data = @thing.read) && !data.empty?)
-              @push_parser << data rescue nil
-            end
-            @push_parser.finish rescue nil
-          else
-            @push_parser.write(@thing, true) rescue nil
-          end
-
+          @parser = parser
+          @parser.replace_entities = @replace_entities if @replace_entities
+          @parser.parse(@thing)
           nil
         end
 
         def line(*args)
-          @push_parser ? @push_parser.line(*args) : 0
+          @parser ? @parser.line(*args) : 0
         end
 
         def column(*args)
-          @push_parser ? @push_parser.column(*args) : 0
-        end
-
-        def replace_entities=(arg)
-          if @push_parser
-            @push_parser.replace_entities = arg
-          else
-            @replace_entities = arg
-          end
-        end
-
-        def replace_entities(*args)
-          @push_parser ? @push_parser.replace_entities(*args) : @replace_entities
+          @parser ? @parser.column(*args) : 0
         end
       end
     end

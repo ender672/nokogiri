@@ -30,9 +30,6 @@ module Nokogiri
       # For more information about SAX parsers, see Nokogiri::XML::SAX.  Also
       # see Nokogiri::XML::SAX::Document for the available events.
       class Parser
-        class Attribute < Struct.new(:localname, :prefix, :uri, :value)
-        end
-
         # Encodinds this parser supports
         ENCODINGS = {
           'NONE'        => 0, # No char encoding detected
@@ -70,7 +67,7 @@ module Nokogiri
         def initialize doc = Nokogiri::XML::SAX::Document.new, encoding = 'UTF-8'
           @encoding = encoding
           @document = doc
-          @warned   = false
+          @filename = nil
         end
 
         ###
@@ -88,26 +85,37 @@ module Nokogiri
         # Parse given +io+
         def parse_io io, encoding = 'ASCII'
           @encoding = encoding
-          ctx = ParserContext.io(io, ENCODINGS[encoding])
-          yield ctx if block_given?
-          ctx.parse_with self
+          native_parser = NativeParser.new(@document, @filename)
+          yield native_parser if block_given?
+          _parse_io(native_parser, io)
         end
 
         ###
         # Parse a file with +filename+
-        def parse_file filename
+        def parse_file filename, encoding = 'UTF-8'
           raise ArgumentError unless filename
           raise Errno::ENOENT unless File.exists?(filename)
           raise Errno::EISDIR if File.directory?(filename)
-          ctx = ParserContext.file filename
-          yield ctx if block_given?
-          ctx.parse_with self
+          @filename = filename
+          parse_io(File.open(filename, 'rb'), encoding)
         end
 
-        def parse_memory data
-          ctx = ParserContext.memory data
-          yield ctx if block_given?
-          ctx.parse_with self
+        def parse_memory data, encoding = 'UTF-8'
+          @encoding = encoding
+          raise ArgumentError if data.nil?
+          raise "data cannot be empty" if data.empty?
+          native_parser = NativeParser.new(@document)
+          yield native_parser if block_given?
+          native_parser.write(data, true) rescue nil
+        end
+
+        private
+
+        def _parse_io(parser, io)
+          while((data = io.read) && !data.empty?)
+            parser.write(data) rescue nil
+          end
+          parser.finish rescue nil
         end
       end
     end
