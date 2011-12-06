@@ -92,16 +92,15 @@ module Nokogiri
 
         ###
         # Parse a file with +filename+
-        def parse_file filename, encoding = 'UTF-8'
+        def parse_file filename
           raise ArgumentError unless filename
           raise Errno::ENOENT unless File.exists?(filename)
           raise Errno::EISDIR if File.directory?(filename)
           @filename = filename
-          parse_io(File.open(filename, 'rb'), encoding)
+          parse_io(File.open(filename, 'rb'))
         end
 
-        def parse_memory data, encoding = 'UTF-8'
-          @encoding = encoding
+        def parse_memory data
           raise ArgumentError if data.nil?
           raise "data cannot be empty" if data.empty?
           native_parser = NativeParser.new(@document)
