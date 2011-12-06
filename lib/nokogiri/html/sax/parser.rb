@@ -33,16 +33,15 @@ module Nokogiri
 
         ###
         # Parse given +io+
-        def parse_io io, encoding = 'ASCII'
+        def parse_io io, encoding = nil
           @encoding = encoding
           parser = get_parser
           yield parser if block_given?
           _parse_io(parser, io)
         end
 
-        def parse_memory data, encoding = 'UTF-8'
+        def parse_memory data, encoding = nil
           raise ArgumentError if data.nil?
-          raise "data cannot be empty" if data.empty?
           @encoding = encoding
           parser = get_parser
           yield parser if block_given?
@@ -52,9 +51,10 @@ module Nokogiri
         private
 
         def get_parser
-          enc_id = Nokogiri::XML::SAX::Parser::ENCODINGS[encoding]
+          enc_id = Nokogiri::XML::SAX::Parser::ENCODINGS[@encoding]
           native_parser = NativeParser.new(@document, @filename, enc_id)
-          native_parser.force_encoding(enc_id)
+          native_parser.force_encoding(enc_id) if enc_id
+          native_parser
         end
       end
     end
