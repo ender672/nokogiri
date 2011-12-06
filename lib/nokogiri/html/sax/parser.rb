@@ -53,9 +53,8 @@ module Nokogiri
         private
 
         def get_parser
-          enc_id = Nokogiri::XML::SAX::Parser::ENCODINGS[@encoding]
-          native_parser = PushParser.new(@document, @filename, enc_id)
-          native_parser.force_encoding(enc_id) if enc_id
+          native_parser = PushParser.new(@document, @filename, @encoding)
+          native_parser.force_encoding(@encoding) if @encoding
           native_parser
         end
       end

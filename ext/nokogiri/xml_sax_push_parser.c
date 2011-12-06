@@ -194,11 +194,9 @@ static VALUE
 force_encoding(VALUE self, VALUE encoding)
 {
     xmlParserCtxtPtr ctxt;
-    xmlCharEncoding enc;
     xmlCharEncodingHandlerPtr enc_handler;
     Data_Get_Struct(self, xmlParserCtxt, ctxt);
-    enc = (xmlCharEncoding)NUM2INT(encoding);
-    enc_handler = xmlFindCharEncodingHandler(xmlGetCharEncodingName(enc));
+    enc_handler = xmlFindCharEncodingHandler(StringValuePtr(encoding));
 
     if (xmlSwitchToEncoding(ctxt, enc_handler))
 	rb_raise(rb_eRuntimeError, "Unsupported encoding");

@@ -14,8 +14,11 @@ initialize(int argc, VALUE *argv, VALUE self)
     if (!NIL_P(_filename))
 	filename = StringValuePtr(_filename);
 
-    if (!NIL_P(encoding))
-	enc = (xmlCharEncoding)NUM2INT(encoding);
+    if (!NIL_P(encoding)) {
+	enc = xmlParseCharEncoding(StringValuePtr(encoding));
+	if (enc == XML_CHAR_ENCODING_ERROR)
+	    rb_raise(rb_eArgError, "Unsupported encoding");
+    }
 
     //FIXME: make sure to free the existing DATA_PTR first, if exists.
     sax = create_sax_handler_callbacks(doc);
