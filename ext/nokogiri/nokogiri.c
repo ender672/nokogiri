@@ -87,7 +87,7 @@ void Init_nokogiri()
   init_xml_node_set();
   init_xml_xpath_context();
   init_xml_sax_push_parser();
-  init_xml_sax_handler_callbacks();
+  init_xml_sax_parser();
   init_xml_reader();
   init_xml_dtd();
   init_xml_element_content();
