@@ -99,8 +99,8 @@ int vasprintf (char **strp, const char *fmt, va_list ap);
 #include <xml_entity_decl.h>
 #include <xml_xpath_context.h>
 #include <xml_element_content.h>
-#include <xml_sax_push_parser.h>
 #include <xml_sax_parser.h>
+#include <xml_sax_push_parser.h>
 #include <xml_reader.h>
 #include <html_sax_push_parser.h>
 #include <xslt_stylesheet.h>
