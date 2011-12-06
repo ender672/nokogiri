@@ -30,6 +30,8 @@ module Nokogiri
       # For more information about SAX parsers, see Nokogiri::XML::SAX.  Also
       # see Nokogiri::XML::SAX::Document for the available events.
       class Parser
+        class Attribute < Struct.new(:localname, :prefix, :uri, :value)
+        end
         # The Nokogiri::XML::SAX::Document where events will be sent.
         attr_accessor :document
 

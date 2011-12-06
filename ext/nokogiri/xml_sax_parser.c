@@ -85,7 +85,7 @@ static VALUE attributes_as_list(
 {
   VALUE list = rb_ary_new2((long)nb_attributes);
 
-  VALUE attr_klass = rb_const_get(cNokogiriXmlSaxPushParser, id_cAttribute);
+  VALUE attr_klass = rb_const_get(cNokogiriXmlSaxParser, id_cAttribute);
   if (attributes) {
     /* Each attribute is an array of [localname, prefix, URI, value, end] */
     int i;
@@ -243,8 +243,15 @@ create_sax_handler_callbacks(VALUE document)
   return handler;
 }
 
+VALUE cNokogiriXmlSaxParser ;
 void init_xml_sax_parser()
 {
+  VALUE nokogiri  = rb_define_module("Nokogiri");
+  VALUE xml       = rb_define_module_under(nokogiri, "XML");
+  VALUE sax       = rb_define_module_under(xml, "SAX");
+  VALUE klass     = rb_define_class_under(sax, "Parser", rb_cObject);
+
+  cNokogiriXmlSaxParser = klass;
   id_start_document = rb_intern("start_document");
   id_end_document   = rb_intern("end_document");
   id_start_element  = rb_intern("start_element");

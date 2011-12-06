@@ -23,8 +23,6 @@ module Nokogiri
       #   parser << "/div>"
       #   parser.finish
       class PushParser
-        class Attribute < Struct.new(:localname, :prefix, :uri, :value)
-        end        
       end
     end
   end
