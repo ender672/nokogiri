@@ -78,7 +78,7 @@ VALUE attributes_as_list(int nb_attributes, const xmlChar ** attributes)
 {
     VALUE list = rb_ary_new2((long)nb_attributes);
 
-    VALUE attr_klass = rb_const_get(cNokogiriXmlSaxNativeParser, id_cAttribute);
+    VALUE attr_klass = rb_const_get(cNokogiriXmlSaxPushParser, id_cAttribute);
     if (attributes) {
 	/* Each attribute is an array of [localname, prefix, URI, value, end] */
 	int i;

@@ -1,4 +1,4 @@
-#include <html_sax_native_parser.h>
+#include <html_sax_push_parser.h>
 
 static VALUE
 initialize(int argc, VALUE *argv, VALUE self)
@@ -78,18 +78,18 @@ finish(VALUE self)
     return self;
 }
 
-VALUE cNokogiriHtmlSaxNativeParser;
+VALUE cNokogiriHtmlSaxPushParser;
 
 void
-init_html_sax_native_parser()
+init_html_sax_push_parser()
 {
     VALUE nokogiri = rb_define_module("Nokogiri");
     VALUE html = rb_define_module_under(nokogiri, "HTML");
     VALUE sax = rb_define_module_under(html, "SAX");
-    VALUE klass = rb_define_class_under(sax, "NativeParser",
-					cNokogiriXmlSaxNativeParser);
+    VALUE klass = rb_define_class_under(sax, "PushParser",
+					cNokogiriXmlSaxPushParser);
 
-    cNokogiriHtmlSaxNativeParser = klass;
+    cNokogiriHtmlSaxPushParser = klass;
 
     rb_define_method(klass, "initialize", initialize, -1);
     rb_define_method(klass, "write", write, -1);

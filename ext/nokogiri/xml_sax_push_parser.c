@@ -1,4 +1,4 @@
-#include <xml_sax_native_parser.h>
+#include <xml_sax_push_parser.h>
 
 static void
 mark(xmlParserCtxtPtr ctx)
@@ -214,17 +214,17 @@ finish(VALUE self)
     return self;
 }
 
-VALUE cNokogiriXmlSaxNativeParser;
+VALUE cNokogiriXmlSaxPushParser;
 
 void
-init_xml_sax_native_parser()
+init_xml_sax_push_parser()
 {
     VALUE nokogiri  = rb_define_module("Nokogiri");
     VALUE xml       = rb_define_module_under(nokogiri, "XML");
     VALUE sax       = rb_define_module_under(xml, "SAX");
-    VALUE klass     = rb_define_class_under(sax, "NativeParser", rb_cObject);
+    VALUE klass     = rb_define_class_under(sax, "PushParser", rb_cObject);
 
-    cNokogiriXmlSaxNativeParser = klass;
+    cNokogiriXmlSaxPushParser = klass;
 
     rb_define_alloc_func(klass, allocate);
     rb_define_method(klass, "write", write, -1);

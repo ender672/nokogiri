@@ -85,9 +85,9 @@ module Nokogiri
         # Parse given +io+
         def parse_io io, encoding = 'ASCII'
           @encoding = encoding
-          native_parser = NativeParser.new(@document, @filename)
-          yield native_parser if block_given?
-          _parse_io(native_parser, io)
+          push_parser = PushParser.new(@document, @filename)
+          yield push_parser if block_given?
+          _parse_io(push_parser, io)
         end
 
         ###
@@ -103,9 +103,9 @@ module Nokogiri
         def parse_memory data
           raise ArgumentError if data.nil?
           raise "data cannot be empty" if data.empty?
-          native_parser = NativeParser.new(@document)
-          yield native_parser if block_given?
-          native_parser.write(data, true) rescue nil
+          push_parser = PushParser.new(@document)
+          yield push_parser if block_given?
+          push_parser.write(data, true) rescue nil
         end
 
         private

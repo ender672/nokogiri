@@ -86,7 +86,7 @@ void Init_nokogiri()
   init_xml_comment();
   init_xml_node_set();
   init_xml_xpath_context();
-  init_xml_sax_native_parser();
+  init_xml_sax_push_parser();
   init_xml_sax_handler_callbacks();
   init_xml_reader();
   init_xml_dtd();
@@ -95,7 +95,7 @@ void Init_nokogiri()
   init_xml_element_decl();
   init_xml_entity_decl();
   init_xml_namespace();
-  init_html_sax_native_parser();
+  init_html_sax_push_parser();
   init_xslt_stylesheet();
   init_xml_syntax_error();
   init_html_entity_lookup();
