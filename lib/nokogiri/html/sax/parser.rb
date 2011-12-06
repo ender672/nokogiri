@@ -28,6 +28,15 @@ module Nokogiri
       class Parser < Nokogiri::XML::SAX::Parser
         ###
         # Parse html stored in +data+ using +encoding+
+        def parse_memory data, encoding = 'UTF-8'
+          raise ArgumentError if data.nil?
+          @encoding = encoding
+          parser = get_parser
+          yield parser if block_given?
+          parser.write(data, true) rescue nil
+        end
+
+        # Create a new Parser with +doc+ and +encoding+
         def initialize doc = Nokogiri::HTML::SAX::Document.new, encoding = 'UTF-8'
           super(doc, encoding)
         end
@@ -39,14 +48,6 @@ module Nokogiri
           parser = get_parser
           yield parser if block_given?
           _parse_io(parser, io)
-        end
-
-        def parse_memory data, encoding = 'UTF-8'
-          raise ArgumentError if data.nil?
-          @encoding = encoding
-          parser = get_parser
-          yield parser if block_given?
-          parser.write(data, true) rescue nil
         end
 
         private
