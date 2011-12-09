@@ -27,7 +27,6 @@ initialize(int argc, VALUE *argv, VALUE self)
 {
     VALUE _filename, doc;
     const char *filename = NULL;
-    xmlSAXHandlerPtr sax;
     xmlParserCtxtPtr ctx;
 
     rb_scan_args(argc, argv, "11", &doc, &_filename);
@@ -36,28 +35,32 @@ initialize(int argc, VALUE *argv, VALUE self)
 	filename = StringValuePtr(_filename);
 
     //FIXME: make sure to free the existing DATA_PTR first, if exists.
-    sax = create_sax_handler_callbacks(doc);
-
-    ctx = xmlCreatePushParserCtxt(sax, NULL, NULL, 0, filename);
-    free(sax);
+    ctx = xmlCreatePushParserCtxt(&nokogiriSAXHandlerPrototype, NULL, NULL, 0,
+				  filename);
     if (!ctx)
       rb_raise(rb_eRuntimeError, "Could not create a parser context");
 
+    ctx->sax->_private = (void *)doc;
     ctx->sax2 = 1;
     DATA_PTR(self) = ctx;
 
     return self;
 }
 
-static void
-write2(xmlParserCtxtPtr ctx, const char *chunk, int size, int last_chunk)
+static VALUE
+write2(VALUE self, const char *chunk, int size, int last_chunk)
 {
+    xmlParserCtxtPtr ctx;
+    Data_Get_Struct(self, xmlParserCtxt, ctx);
+
     if (xmlParseChunk(ctx, chunk, size, last_chunk)) {
 	if (!(ctx->options & XML_PARSE_RECOVER)) {
 	    xmlErrorPtr e = xmlCtxtGetLastError(ctx);
 	    Nokogiri_error_raise(NULL, e);
 	}
     }
+
+    return self;
 }
 
 /*
@@ -70,11 +73,8 @@ static VALUE
 write(int argc, VALUE *argv, VALUE self)
 {
     VALUE _chunk, _last_chunk;
-    xmlParserCtxtPtr ctx;
     const char *chunk = NULL;
     int size = 0;
-
-    Data_Get_Struct(self, xmlParserCtxt, ctx);
 
     rb_scan_args(argc, argv, "11", &_chunk, &_last_chunk);
 
@@ -83,9 +83,7 @@ write(int argc, VALUE *argv, VALUE self)
 	size = (int)RSTRING_LEN(_chunk);
     }
 
-    write2(ctx, chunk, size, !NIL_P(_last_chunk));
-
-    return self;
+    return write2(self, chunk, size, !NIL_P(_last_chunk));
 }
 
 static VALUE get_options(VALUE self)
@@ -207,10 +205,7 @@ force_encoding(VALUE self, VALUE encoding)
 static VALUE
 finish(VALUE self)
 {
-    xmlParserCtxtPtr ctx;
-    Data_Get_Struct(self, xmlParserCtxt, ctx);
-    write2(ctx, NULL, 0, 1);
-    return self;
+    return write2(self, NULL, 0, 1);
 }
 
 VALUE cNokogiriXmlSaxPushParser;

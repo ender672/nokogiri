@@ -220,28 +220,41 @@ static void cdata_block(void * ctx, const xmlChar *value, int len)
     rb_funcall((VALUE)ctxt->sax->_private, id_cdata_block, 1, string);
 }
 
-xmlSAXHandlerPtr
-create_sax_handler_callbacks(VALUE document)
+xmlSAXHandler nokogiriSAXHandlerPrototype =
 {
-  xmlSAXHandlerPtr handler = calloc((size_t)1, sizeof(xmlSAXHandler));
-
-  xmlSetStructuredErrorFunc(NULL, NULL);
-
-  handler->startDocument = start_document;
-  handler->endDocument = end_document;
-  handler->startElement = start_element;
-  handler->endElement = end_element;
-  handler->startElementNs = start_element_ns;
-  handler->endElementNs = end_element_ns;
-  handler->characters = characters_func;
-  handler->comment = comment_func;
-  handler->warning = warning_func;
-  handler->error = error_func;
-  handler->cdataBlock = cdata_block;
-  handler->initialized = XML_SAX2_MAGIC;
-  handler->_private = document;
-  return handler;
-}
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    start_document,
+    end_document,
+    start_element,
+    end_element,
+    NULL,
+    characters_func,
+    NULL,
+    NULL,
+    comment_func,
+    warning_func,
+    error_func,
+    NULL,
+    NULL,
+    cdata_block,
+    NULL,
+    XML_SAX2_MAGIC,
+    NULL,
+    start_element_ns,
+    end_element_ns,
+    NULL
+};
 
 VALUE cNokogiriXmlSaxParser ;
 void init_xml_sax_parser()
@@ -265,4 +278,6 @@ void init_xml_sax_parser()
   id_cAttribute     = rb_intern("Attribute");
   id_start_element_namespace = rb_intern("start_element_namespace");
   id_end_element_namespace = rb_intern("end_element_namespace");
+
+  xmlSetStructuredErrorFunc(NULL, NULL);
 }

@@ -6,7 +6,6 @@
 void init_xml_sax_parser();
 
 extern VALUE cNokogiriXmlSaxParser ;
-
-xmlSAXHandlerPtr create_sax_handler_callbacks();
+extern xmlSAXHandler nokogiriSAXHandlerPrototype;
 
 #endif
