@@ -39,6 +39,7 @@ initialize(int argc, VALUE *argv, VALUE self)
     sax = create_sax_handler_callbacks(doc);
 
     ctx = xmlCreatePushParserCtxt(sax, NULL, NULL, 0, filename);
+    free(sax);
     if (!ctx)
       rb_raise(rb_eRuntimeError, "Could not create a parser context");
 

@@ -7,7 +7,7 @@ initialize(int argc, VALUE *argv, VALUE self)
     const char *filename = NULL;
     xmlSAXHandlerPtr sax;
     htmlParserCtxtPtr ctx;
-    xmlCharEncoding enc;
+    xmlCharEncoding enc = (xmlCharEncoding)0;
 
     rb_scan_args(argc, argv, "12", &doc, &_filename, &encoding);
 
@@ -24,6 +24,7 @@ initialize(int argc, VALUE *argv, VALUE self)
     sax = create_sax_handler_callbacks(doc);
 
     ctx = htmlCreatePushParserCtxt(sax, NULL, NULL, 0, filename, enc);
+    free(sax);
     if (!ctx)
       rb_raise(rb_eRuntimeError, "Could not create a parser context");
 
