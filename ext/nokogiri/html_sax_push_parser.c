@@ -19,7 +19,6 @@ initialize(int argc, VALUE *argv, VALUE self)
 	    rb_raise(rb_eArgError, "Unsupported encoding");
     }
 
-    //FIXME: make sure to free the existing DATA_PTR first, if exists.
     ctx = htmlCreatePushParserCtxt(&nokogiriSAXHandlerPrototype, NULL, NULL, 0,
 				   filename, enc);
     if (!ctx)
@@ -27,6 +26,7 @@ initialize(int argc, VALUE *argv, VALUE self)
 
     ctx->sax->_private = (void *)doc;
     ctx->sax2 = 1;
+    xmlFreeParserCtxt(DATA_PTR(self));
     DATA_PTR(self) = ctx;
 
     return self;

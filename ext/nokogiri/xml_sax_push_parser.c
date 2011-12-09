@@ -34,7 +34,6 @@ initialize(int argc, VALUE *argv, VALUE self)
     if (!NIL_P(_filename))
 	filename = StringValuePtr(_filename);
 
-    //FIXME: make sure to free the existing DATA_PTR first, if exists.
     ctx = xmlCreatePushParserCtxt(&nokogiriSAXHandlerPrototype, NULL, NULL, 0,
 				  filename);
     if (!ctx)
@@ -42,6 +41,7 @@ initialize(int argc, VALUE *argv, VALUE self)
 
     ctx->sax->_private = (void *)doc;
     ctx->sax2 = 1;
+    deallocate(DATA_PTR(self));
     DATA_PTR(self) = ctx;
 
     return self;
