@@ -1,25 +1,33 @@
 #include <xml_sax_push_parser.h>
 
 static void
-mark(xmlParserCtxtPtr ctx)
+mark(struct xml_sax_parser_data *data)
 {
-    if (ctx)
-	rb_gc_mark((VALUE)ctx->sax->_private);
+    if (data->handler)
+	rb_gc_mark(data->handler);
 }
 
 static void
-deallocate(xmlParserCtxtPtr ctx)
+deallocate(struct xml_sax_parser_data *data)
 {
-    NOKOGIRI_DEBUG_START(ctx);
-    if (ctx)
-	xmlFreeParserCtxt(ctx);
-    NOKOGIRI_DEBUG_END(ctx);
+    NOKOGIRI_DEBUG_START(data->ctx);
+    if (data->ctx)
+	xmlFreeParserCtxt(data->ctx);
+    NOKOGIRI_DEBUG_END(data->ctx);
+    free(data);
 }
 
 static VALUE
 allocate(VALUE klass)
 {
-    return Data_Wrap_Struct(klass, mark, deallocate, NULL);
+    struct xml_sax_parser_data *data;
+    VALUE self;
+
+    self = Data_Make_Struct(klass, struct xml_sax_parser_data, mark, deallocate,
+			    data);
+    data->handler = Qnil;
+
+    return self;
 }
 
 static VALUE
@@ -28,21 +36,24 @@ initialize(int argc, VALUE *argv, VALUE self)
     VALUE _filename, doc;
     const char *filename = NULL;
     xmlParserCtxtPtr ctx;
+    struct xml_sax_parser_data *data;
 
     rb_scan_args(argc, argv, "11", &doc, &_filename);
 
     if (!NIL_P(_filename))
 	filename = StringValuePtr(_filename);
 
+    Data_Get_Struct(self, struct xml_sax_parser_data, data);
+
     ctx = xmlCreatePushParserCtxt(&nokogiriSAXHandlerPrototype, NULL, NULL, 0,
 				  filename);
     if (!ctx)
       rb_raise(rb_eRuntimeError, "Could not create a parser context");
 
-    ctx->sax->_private = (void *)doc;
+    ctx->sax->_private = (void *)data;
     ctx->sax2 = 1;
-    deallocate(DATA_PTR(self));
-    DATA_PTR(self) = ctx;
+    data->handler = doc;
+    data->ctx = ctx;
 
     return self;
 }
@@ -51,7 +62,14 @@ static VALUE
 write2(VALUE self, const char *chunk, int size, int last_chunk)
 {
     xmlParserCtxtPtr ctx;
-    Data_Get_Struct(self, xmlParserCtxt, ctx);
+    struct xml_sax_parser_data *data;
+    Data_Get_Struct(self, struct xml_sax_parser_data, data);
+
+    ctx = data->ctx;
+
+    if (!ctx)
+      rb_raise(rb_eRuntimeError, "Parser is Uninitialized.");
+
 
     if (xmlParseChunk(ctx, chunk, size, last_chunk)) {
 	if (!(ctx->options & XML_PARSE_RECOVER)) {
@@ -88,18 +106,21 @@ write(int argc, VALUE *argv, VALUE self)
 
 static VALUE get_options(VALUE self)
 {
-  xmlParserCtxtPtr ctx;
-  Data_Get_Struct(self, xmlParserCtxt, ctx);
-
-  return INT2NUM(ctx->options);
+  struct xml_sax_parser_data *data;
+  Data_Get_Struct(self, struct xml_sax_parser_data, data);
+  if (!data->ctx)
+    rb_raise(rb_eRuntimeError, "Parser is Uninitialized.");
+  return INT2NUM(data->ctx->options);
 }
 
 static VALUE set_options(VALUE self, VALUE options)
 {
-  xmlParserCtxtPtr ctx;
-  Data_Get_Struct(self, xmlParserCtxt, ctx);
+  struct xml_sax_parser_data *data;
+  Data_Get_Struct(self, struct xml_sax_parser_data, data);
+  if (!data->ctx)
+    rb_raise(rb_eRuntimeError, "Parser is Uninitialized.");
 
-  if (xmlCtxtUseOptions(ctx, (int)NUM2INT(options)) != 0)
+  if (xmlCtxtUseOptions(data->ctx, (int)NUM2INT(options)) != 0)
     rb_raise(rb_eRuntimeError, "Cannot set XML parser context options");
 
   return Qnil;
@@ -114,13 +135,15 @@ static VALUE set_options(VALUE self, VALUE options)
  */
 static VALUE set_replace_entities(VALUE self, VALUE value)
 {
-  xmlParserCtxtPtr ctxt;
-  Data_Get_Struct(self, xmlParserCtxt, ctxt);
+  struct xml_sax_parser_data *data;
+  Data_Get_Struct(self, struct xml_sax_parser_data, data);
+  if (!data->ctx)
+    rb_raise(rb_eRuntimeError, "Parser is Uninitialized.");
 
   if(Qfalse == value)
-    ctxt->replaceEntities = 0;
+    data->ctx->replaceEntities = 0;
   else
-    ctxt->replaceEntities = 1;
+    data->ctx->replaceEntities = 1;
 
   return value;
 }
@@ -134,10 +157,12 @@ static VALUE set_replace_entities(VALUE self, VALUE value)
  */
 static VALUE get_replace_entities(VALUE self)
 {
-  xmlParserCtxtPtr ctxt;
-  Data_Get_Struct(self, xmlParserCtxt, ctxt);
+  struct xml_sax_parser_data *data;
+  Data_Get_Struct(self, struct xml_sax_parser_data, data);
+  if (!data->ctx)
+    rb_raise(rb_eRuntimeError, "Parser is Uninitialized.");
 
-  if(0 == ctxt->replaceEntities)
+  if(0 == data->ctx->replaceEntities)
     return Qfalse;
   else
     return Qtrue;
@@ -150,12 +175,13 @@ static VALUE get_replace_entities(VALUE self)
  */
 static VALUE line(VALUE self)
 {
-  xmlParserCtxtPtr ctxt;
   xmlParserInputPtr io;
+  struct xml_sax_parser_data *data;
+  Data_Get_Struct(self, struct xml_sax_parser_data, data);
+  if (!data->ctx)
+    rb_raise(rb_eRuntimeError, "Parser is Uninitialized.");
 
-  Data_Get_Struct(self, xmlParserCtxt, ctxt);
-
-  io = ctxt->input;
+  io = data->ctx->input;
   if(io)
     return INT2NUM(io->line);
 
@@ -169,12 +195,13 @@ static VALUE line(VALUE self)
  */
 static VALUE column(VALUE self)
 {
-  xmlParserCtxtPtr ctxt;
   xmlParserInputPtr io;
+  struct xml_sax_parser_data *data;
+  Data_Get_Struct(self, struct xml_sax_parser_data, data);
+  if (!data->ctx)
+    rb_raise(rb_eRuntimeError, "Parser is Uninitialized.");
 
-  Data_Get_Struct(self, xmlParserCtxt, ctxt);
-
-  io = ctxt->input;
+  io = data->ctx->input;
   if(io)
     return INT2NUM(io->col);
 
@@ -184,21 +211,25 @@ static VALUE column(VALUE self)
 static VALUE
 document(VALUE self)
 {
-    xmlParserCtxtPtr ctxt;
-    Data_Get_Struct(self, xmlParserCtxt, ctxt);
-    return (VALUE)ctxt->sax->_private;
+    struct xml_sax_parser_data *data;
+    Data_Get_Struct(self, struct xml_sax_parser_data, data);
+    return data->handler;
 }
 
 static VALUE
 force_encoding(VALUE self, VALUE encoding)
 {
-    xmlParserCtxtPtr ctxt;
     xmlCharEncodingHandlerPtr enc_handler;
-    Data_Get_Struct(self, xmlParserCtxt, ctxt);
+    struct xml_sax_parser_data *data;
+    Data_Get_Struct(self, struct xml_sax_parser_data, data);
+    if (!data->ctx)
+      rb_raise(rb_eRuntimeError, "Parser is Uninitialized.");
+
     enc_handler = xmlFindCharEncodingHandler(StringValuePtr(encoding));
 
-    if (xmlSwitchToEncoding(ctxt, enc_handler))
+    if (xmlSwitchToEncoding(data->ctx, enc_handler))
 	rb_raise(rb_eRuntimeError, "Unsupported encoding");
+
     return self;
 }
 

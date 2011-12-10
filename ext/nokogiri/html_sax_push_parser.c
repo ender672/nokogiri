@@ -7,6 +7,7 @@ initialize(int argc, VALUE *argv, VALUE self)
     const char *filename = NULL;
     htmlParserCtxtPtr ctx;
     xmlCharEncoding enc = XML_CHAR_ENCODING_NONE;
+    struct xml_sax_parser_data *data;
 
     rb_scan_args(argc, argv, "12", &doc, &_filename, &encoding);
 
@@ -19,15 +20,17 @@ initialize(int argc, VALUE *argv, VALUE self)
 	    rb_raise(rb_eArgError, "Unsupported encoding");
     }
 
+    Data_Get_Struct(self, struct xml_sax_parser_data, data);
+
     ctx = htmlCreatePushParserCtxt(&nokogiriSAXHandlerPrototype, NULL, NULL, 0,
 				   filename, enc);
     if (!ctx)
       rb_raise(rb_eRuntimeError, "Could not create a parser context");
 
-    ctx->sax->_private = (void *)doc;
+    ctx->sax->_private = (void *)data;
     ctx->sax2 = 1;
-    xmlFreeParserCtxt(DATA_PTR(self));
-    DATA_PTR(self) = ctx;
+    data->handler = doc;
+    data->ctx = (xmlParserCtxtPtr)ctx;
 
     return self;
 }
@@ -36,7 +39,13 @@ static VALUE
 write2(VALUE self, const char *chunk, int size, int last_chunk)
 {
     xmlParserCtxtPtr ctx;
-    Data_Get_Struct(self, xmlParserCtxt, ctx);
+    struct xml_sax_parser_data *data;
+    Data_Get_Struct(self, struct sax_parser_data, data);
+
+    ctx = data->ctx;
+
+    if (!ctx)
+      rb_raise(rb_eRuntimeError, "Parser is Uninitialized.");
 
     if (htmlParseChunk(ctx, chunk, size, last_chunk)) {
 	if (!(ctx->options & XML_PARSE_RECOVER)) {

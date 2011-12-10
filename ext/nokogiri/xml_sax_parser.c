@@ -24,7 +24,8 @@ prot_start_document(VALUE doc)
 static void start_document(void * ctx)
 {
   xmlParserCtxtPtr ctxt = (xmlParserCtxtPtr)ctx;
-  VALUE doc = (VALUE)ctxt->sax->_private;
+  struct xml_sax_parser_data *data = (struct xml_sax_parser_data *)(ctxt->sax->_private);
+  VALUE doc = data->handler;
   int status;
   VALUE args[4];
 
@@ -76,7 +77,9 @@ static void end_document(void * ctx)
 {
     int status;
     xmlParserCtxtPtr ctxt = (xmlParserCtxtPtr)ctx;
-    rb_protect(prot_end_document, (VALUE)ctxt->sax->_private, &status);
+    struct xml_sax_parser_data *data = (struct xml_sax_parser_data *)(ctxt->sax->_private);
+    VALUE doc = data->handler;
+    rb_protect(prot_end_document, doc, &status);
     if (status)
   	  xmlStopParser(ctxt);
 }
@@ -91,7 +94,8 @@ prot_start_element(VALUE _args)
 static void start_element(void * ctx, const xmlChar *name, const xmlChar **atts)
 {
   xmlParserCtxtPtr ctxt = (xmlParserCtxtPtr)ctx;
-  VALUE doc = (VALUE)ctxt->sax->_private;
+  struct xml_sax_parser_data *data = (struct xml_sax_parser_data *)(ctxt->sax->_private);
+  VALUE doc = data->handler;
   VALUE attributes = rb_ary_new();
   VALUE args[3];
   const xmlChar * attr;
@@ -109,8 +113,10 @@ static void start_element(void * ctx, const xmlChar *name, const xmlChar **atts)
   args[1] = NOKOGIRI_STR_NEW2(name);
   args[2] = attributes;
   rb_protect(prot_start_element, (VALUE)args, &status);
-  if (status)
-	  xmlStopParser(ctxt);
+  if (status) {
+    xmlStopParser(ctxt);
+    data->status = status;
+  }
 }
 
 static VALUE
@@ -125,7 +131,9 @@ static void end_element(void * ctx, const xmlChar *name)
     int status;
     VALUE args[2];
     xmlParserCtxtPtr ctxt = (xmlParserCtxtPtr)ctx;
-    args[0] = (VALUE)ctxt->sax->_private;
+    struct xml_sax_parser_data *data = (struct xml_sax_parser_data *)(ctxt->sax->_private);
+    VALUE doc = data->handler;
+    args[0] = doc;
     args[1] = NOKOGIRI_STR_NEW2(name);
     rb_protect(prot_end_element, (VALUE)args, &status);
     if (status)
@@ -184,7 +192,8 @@ start_element_ns (
   VALUE args[6];
   int status;
   xmlParserCtxtPtr ctxt = (xmlParserCtxtPtr)ctx;
-  VALUE doc = (VALUE)ctxt->sax->_private;
+  struct xml_sax_parser_data *data = (struct xml_sax_parser_data *)(ctxt->sax->_private);
+  VALUE doc = data->handler;
 
   VALUE attribute_list = attributes_as_list(nb_attributes, attributes);
 
@@ -235,7 +244,9 @@ end_element_ns (
     int status;
     VALUE args[4];
     xmlParserCtxtPtr ctxt = (xmlParserCtxtPtr)ctx;
-    args[0] = (VALUE)ctxt->sax->_private;
+    struct xml_sax_parser_data *data = (struct xml_sax_parser_data *)(ctxt->sax->_private);
+    VALUE doc = data->handler;
+    args[0] = doc;
     args[1] = NOKOGIRI_STR_NEW2(localname);
     args[2] = RBSTR_OR_QNIL(prefix);
     args[3] = RBSTR_OR_QNIL(uri);
@@ -256,7 +267,9 @@ static void characters_func(void * ctx, const xmlChar * ch, int len)
     int status;
     VALUE args[2];
     xmlParserCtxtPtr ctxt = (xmlParserCtxtPtr)ctx;
-    args[0] = (VALUE)ctxt->sax->_private;
+    struct xml_sax_parser_data *data = (struct xml_sax_parser_data *)(ctxt->sax->_private);
+    VALUE doc = data->handler;
+    args[0] = doc;
     args[1] = NOKOGIRI_STR_NEW(ch, len);
     rb_protect(prot_characters, (VALUE)args, &status);
     if (status)
@@ -275,7 +288,9 @@ static void comment_func(void * ctx, const xmlChar * value)
     int status;
     VALUE args[2];
     xmlParserCtxtPtr ctxt = (xmlParserCtxtPtr)ctx;
-    args[0] = (VALUE)ctxt->sax->_private;
+    struct xml_sax_parser_data *data = (struct xml_sax_parser_data *)(ctxt->sax->_private);
+    VALUE doc = data->handler;
+    args[0] = doc;
     args[1] = NOKOGIRI_STR_NEW2(value);
     rb_protect(prot_comment, (VALUE)args, &status);
     if (status)
@@ -294,6 +309,8 @@ static void warning_func(void * ctx, const char *msg, ...)
   int status;
   VALUE prot_args[2];
   xmlParserCtxtPtr ctxt = (xmlParserCtxtPtr)ctx;
+  struct xml_sax_parser_data *data = (struct xml_sax_parser_data *)(ctxt->sax->_private);
+  VALUE doc = data->handler;
   char * message;
 
   va_list args;
@@ -301,7 +318,7 @@ static void warning_func(void * ctx, const char *msg, ...)
   vasprintf(&message, msg, args);
   va_end(args);
 
-  prot_args[0] = (VALUE)ctxt->sax->_private;
+  prot_args[0] = doc;
   prot_args[1] = NOKOGIRI_STR_NEW2(message);
   vasprintf_free(message);
   rb_protect(prot_warning, (VALUE)prot_args, &status);
@@ -321,6 +338,8 @@ static void error_func(void * ctx, const char *msg, ...)
   int status;
   VALUE prot_args[2];
   xmlParserCtxtPtr ctxt = (xmlParserCtxtPtr)ctx;
+  struct xml_sax_parser_data *data = (struct xml_sax_parser_data *)(ctxt->sax->_private);
+  VALUE doc = data->handler;
   char * message;
 
   va_list args;
@@ -328,7 +347,7 @@ static void error_func(void * ctx, const char *msg, ...)
   vasprintf(&message, msg, args);
   va_end(args);
 
-  prot_args[0] = (VALUE)ctxt->sax->_private;
+  prot_args[0] = doc;
   prot_args[1] = NOKOGIRI_STR_NEW2(message);
   vasprintf_free(message);
   rb_protect(prot_error, (VALUE)prot_args, &status);
@@ -348,7 +367,9 @@ static void cdata_block(void * ctx, const xmlChar *value, int len)
     int status;
     VALUE args[2];
     xmlParserCtxtPtr ctxt = (xmlParserCtxtPtr)ctx;
-    args[0] = (VALUE)ctxt->sax->_private;
+    struct xml_sax_parser_data *data = (struct xml_sax_parser_data *)(ctxt->sax->_private);
+    VALUE doc = data->handler;
+    args[0] = doc;
     args[1] = NOKOGIRI_STR_NEW(value, len);
     rb_protect(prot_cdata_block, (VALUE)args, &status);
     if (status)
