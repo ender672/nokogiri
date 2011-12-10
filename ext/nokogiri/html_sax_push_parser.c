@@ -40,14 +40,20 @@ write2(VALUE self, const char *chunk, int size, int last_chunk)
 {
     xmlParserCtxtPtr ctx;
     struct xml_sax_parser_data *data;
-    Data_Get_Struct(self, struct sax_parser_data, data);
+    int ret;
+    Data_Get_Struct(self, struct xml_sax_parser_data, data);
 
     ctx = data->ctx;
 
     if (!ctx)
       rb_raise(rb_eRuntimeError, "Parser is Uninitialized.");
 
-    if (htmlParseChunk(ctx, chunk, size, last_chunk)) {
+    ret = htmlParseChunk(ctx, chunk, size, last_chunk);
+
+    if (data->status)
+	rb_jump_tag(data->status);
+
+    if (ret) {
 	if (!(ctx->options & XML_PARSE_RECOVER)) {
 	    xmlErrorPtr e = xmlCtxtGetLastError(ctx);
 	    Nokogiri_error_raise(NULL, e);
