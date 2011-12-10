@@ -8,6 +8,18 @@ static ID id_start_element_namespace, id_end_element_namespace;
 static ID id_comment, id_characters, id_xmldecl, id_error, id_warning;
 static ID id_cdata_block, id_cAttribute;
 
+static int
+rb_protect2(VALUE (*proc) (VALUE), VALUE args, struct xml_sax_parser_data *data)
+{
+    int status;
+    rb_protect(proc, args, &status);
+    if (status) {
+      xmlStopParser(data->ctx);
+      data->status = status;
+    }
+    return status;
+}
+
 static VALUE
 prot_xmldecl(VALUE _args)
 {
@@ -21,12 +33,10 @@ prot_start_document(VALUE doc)
     return rb_funcall(doc, id_start_document, 0);
 }
 
-static void start_document(void * ctx)
+static void start_document(void *user_data)
 {
-  xmlParserCtxtPtr ctxt = (xmlParserCtxtPtr)ctx;
-  struct xml_sax_parser_data *data = (struct xml_sax_parser_data *)(ctxt->sax->_private);
-  VALUE doc = data->handler;
-  int status;
+  struct xml_sax_parser_data *data = (struct xml_sax_parser_data *)user_data;
+  xmlParserCtxtPtr ctxt = data->ctx;
   VALUE args[4];
 
   if(NULL != ctxt && ctxt->html != 1) {
@@ -51,20 +61,15 @@ static void start_document(void * ctx)
           break;
       }
 
-      args[0] = doc;
+      args[0] = data->handler;
       args[1] = version;
       args[2] = encoding;
       args[3] = standalone;
-      rb_protect(prot_xmldecl, (VALUE)args, &status);
-      if (status) {
-	  xmlStopParser(ctxt);
+      if (rb_protect2(prot_xmldecl, (VALUE)args, data))
 	  return;
-      }
     }
   }
-  rb_protect(prot_start_document, doc, &status);
-  if (status)
-	  xmlStopParser(ctxt);
+  rb_protect2(prot_start_document, data->handler, data);
 }
 
 static VALUE
@@ -73,15 +78,10 @@ prot_end_document(VALUE doc)
     return rb_funcall(doc, id_end_document, 0);
 }
 
-static void end_document(void * ctx)
+static void end_document(void *user_data)
 {
-    int status;
-    xmlParserCtxtPtr ctxt = (xmlParserCtxtPtr)ctx;
-    struct xml_sax_parser_data *data = (struct xml_sax_parser_data *)(ctxt->sax->_private);
-    VALUE doc = data->handler;
-    rb_protect(prot_end_document, doc, &status);
-    if (status)
-  	  xmlStopParser(ctxt);
+    struct xml_sax_parser_data *data = (struct xml_sax_parser_data *)user_data;
+    rb_protect2(prot_end_document, data->handler, data);
 }
 
 static VALUE
@@ -91,15 +91,14 @@ prot_start_element(VALUE _args)
     return rb_funcall(args[0], id_start_element, 2, args[1], args[2]);
 }
 
-static void start_element(void * ctx, const xmlChar *name, const xmlChar **atts)
+static void start_element(void *user_data, const xmlChar *name,
+			  const xmlChar **atts)
 {
-  xmlParserCtxtPtr ctxt = (xmlParserCtxtPtr)ctx;
-  struct xml_sax_parser_data *data = (struct xml_sax_parser_data *)(ctxt->sax->_private);
-  VALUE doc = data->handler;
+  struct xml_sax_parser_data *data = (struct xml_sax_parser_data *)user_data;
   VALUE attributes = rb_ary_new();
   VALUE args[3];
   const xmlChar * attr;
-  int status, i = 0;
+  int i = 0;
   if(atts) {
     while((attr = atts[i]) != NULL) {
       const xmlChar * val = atts[i+1];
@@ -109,14 +108,10 @@ static void start_element(void * ctx, const xmlChar *name, const xmlChar **atts)
     }
   }
 
-  args[0] = doc;
+  args[0] = data->handler;
   args[1] = NOKOGIRI_STR_NEW2(name);
   args[2] = attributes;
-  rb_protect(prot_start_element, (VALUE)args, &status);
-  if (status) {
-    xmlStopParser(ctxt);
-    data->status = status;
-  }
+  rb_protect2(prot_start_element, (VALUE)args, data);
 }
 
 static VALUE
@@ -126,18 +121,13 @@ prot_end_element(VALUE _args)
     return rb_funcall(args[0], id_end_element, 1, args[1]);
 }
 
-static void end_element(void * ctx, const xmlChar *name)
+static void end_element(void *user_data, const xmlChar *name)
 {
-    int status;
+    struct xml_sax_parser_data *data = (struct xml_sax_parser_data *)user_data;
     VALUE args[2];
-    xmlParserCtxtPtr ctxt = (xmlParserCtxtPtr)ctx;
-    struct xml_sax_parser_data *data = (struct xml_sax_parser_data *)(ctxt->sax->_private);
-    VALUE doc = data->handler;
-    args[0] = doc;
+    args[0] = data->handler;
     args[1] = NOKOGIRI_STR_NEW2(name);
-    rb_protect(prot_end_element, (VALUE)args, &status);
-    if (status)
-  	  xmlStopParser(ctxt);
+    rb_protect2(prot_end_element, (VALUE)args, data);
 }
 
 static VALUE attributes_as_list(
@@ -179,7 +169,7 @@ prot_start_element_ns(VALUE _args)
 
 static void
 start_element_ns (
-  void * ctx,
+  void *user_data,
   const xmlChar * localname,
   const xmlChar * prefix,
   const xmlChar * uri,
@@ -190,10 +180,7 @@ start_element_ns (
   const xmlChar ** attributes)
 {
   VALUE args[6];
-  int status;
-  xmlParserCtxtPtr ctxt = (xmlParserCtxtPtr)ctx;
-  struct xml_sax_parser_data *data = (struct xml_sax_parser_data *)(ctxt->sax->_private);
-  VALUE doc = data->handler;
+  struct xml_sax_parser_data *data = (struct xml_sax_parser_data *)user_data;
 
   VALUE attribute_list = attributes_as_list(nb_attributes, attributes);
 
@@ -212,15 +199,13 @@ start_element_ns (
     }
   }
 
-  args[0] = doc;
+  args[0] = data->handler;
   args[1] = NOKOGIRI_STR_NEW2(localname);
   args[2] = attribute_list;
   args[3] = RBSTR_OR_QNIL(prefix);
   args[4] = RBSTR_OR_QNIL(uri);
   args[5] = ns_list;
-  rb_protect(prot_start_element_ns, (VALUE)args, &status);
-  if (status)
-	  xmlStopParser(ctxt);
+  rb_protect2(prot_start_element_ns, (VALUE)args, data);
 }
 
 static VALUE
@@ -236,23 +221,18 @@ prot_end_element_ns(VALUE _args)
  */
 static void
 end_element_ns (
-  void * ctx,
+  void *user_data,
   const xmlChar * localname,
   const xmlChar * prefix,
   const xmlChar * uri)
 {
-    int status;
     VALUE args[4];
-    xmlParserCtxtPtr ctxt = (xmlParserCtxtPtr)ctx;
-    struct xml_sax_parser_data *data = (struct xml_sax_parser_data *)(ctxt->sax->_private);
-    VALUE doc = data->handler;
-    args[0] = doc;
+    struct xml_sax_parser_data *data = (struct xml_sax_parser_data *)user_data;
+    args[0] = data->handler;
     args[1] = NOKOGIRI_STR_NEW2(localname);
     args[2] = RBSTR_OR_QNIL(prefix);
     args[3] = RBSTR_OR_QNIL(uri);
-    rb_protect(prot_end_element_ns, (VALUE)args, &status);
-    if (status)
-  	  xmlStopParser(ctxt);
+    rb_protect2(prot_end_element_ns, (VALUE)args, data);
 }
 
 static VALUE
@@ -262,18 +242,14 @@ prot_characters(VALUE _args)
     return rb_funcall(args[0], id_characters, 1, args[1]);
 }
 
-static void characters_func(void * ctx, const xmlChar * ch, int len)
+static void characters_func(void *user_data, const xmlChar * ch, int len)
 {
-    int status;
+    struct xml_sax_parser_data *data = (struct xml_sax_parser_data *)user_data;
     VALUE args[2];
-    xmlParserCtxtPtr ctxt = (xmlParserCtxtPtr)ctx;
-    struct xml_sax_parser_data *data = (struct xml_sax_parser_data *)(ctxt->sax->_private);
     VALUE doc = data->handler;
     args[0] = doc;
     args[1] = NOKOGIRI_STR_NEW(ch, len);
-    rb_protect(prot_characters, (VALUE)args, &status);
-    if (status)
-  	  xmlStopParser(ctxt);
+    rb_protect2(prot_characters, (VALUE)args, data);
 }
 
 static VALUE
@@ -283,18 +259,14 @@ prot_comment(VALUE _args)
     return rb_funcall(args[0], id_comment, 1, args[1]);
 }
 
-static void comment_func(void * ctx, const xmlChar * value)
+static void comment_func(void *user_data, const xmlChar * value)
 {
-    int status;
+    struct xml_sax_parser_data *data = (struct xml_sax_parser_data *)user_data;
     VALUE args[2];
-    xmlParserCtxtPtr ctxt = (xmlParserCtxtPtr)ctx;
-    struct xml_sax_parser_data *data = (struct xml_sax_parser_data *)(ctxt->sax->_private);
     VALUE doc = data->handler;
     args[0] = doc;
     args[1] = NOKOGIRI_STR_NEW2(value);
-    rb_protect(prot_comment, (VALUE)args, &status);
-    if (status)
-  	  xmlStopParser(ctxt);
+    rb_protect2(prot_comment, (VALUE)args, data);
 }
 
 static VALUE
@@ -304,13 +276,10 @@ prot_warning(VALUE _args)
     return rb_funcall(args[0], id_warning, 1, args[1]);
 }
 
-static void warning_func(void * ctx, const char *msg, ...)
+static void warning_func(void *user_data, const char *msg, ...)
 {
-  int status;
+  struct xml_sax_parser_data *data = (struct xml_sax_parser_data *)user_data;
   VALUE prot_args[2];
-  xmlParserCtxtPtr ctxt = (xmlParserCtxtPtr)ctx;
-  struct xml_sax_parser_data *data = (struct xml_sax_parser_data *)(ctxt->sax->_private);
-  VALUE doc = data->handler;
   char * message;
 
   va_list args;
@@ -318,12 +287,10 @@ static void warning_func(void * ctx, const char *msg, ...)
   vasprintf(&message, msg, args);
   va_end(args);
 
-  prot_args[0] = doc;
+  prot_args[0] = data->handler;
   prot_args[1] = NOKOGIRI_STR_NEW2(message);
   vasprintf_free(message);
-  rb_protect(prot_warning, (VALUE)prot_args, &status);
-  if (status)
-	  xmlStopParser(ctxt);
+  rb_protect2(prot_warning, (VALUE)prot_args, data);
 }
 
 static VALUE
@@ -333,13 +300,10 @@ prot_error(VALUE _args)
     return rb_funcall(args[0], id_error, 1, args[1]);
 }
 
-static void error_func(void * ctx, const char *msg, ...)
+static void error_func(void *user_data, const char *msg, ...)
 {
-  int status;
+  struct xml_sax_parser_data *data = (struct xml_sax_parser_data *)user_data;
   VALUE prot_args[2];
-  xmlParserCtxtPtr ctxt = (xmlParserCtxtPtr)ctx;
-  struct xml_sax_parser_data *data = (struct xml_sax_parser_data *)(ctxt->sax->_private);
-  VALUE doc = data->handler;
   char * message;
 
   va_list args;
@@ -347,12 +311,10 @@ static void error_func(void * ctx, const char *msg, ...)
   vasprintf(&message, msg, args);
   va_end(args);
 
-  prot_args[0] = doc;
+  prot_args[0] = data->handler;
   prot_args[1] = NOKOGIRI_STR_NEW2(message);
   vasprintf_free(message);
-  rb_protect(prot_error, (VALUE)prot_args, &status);
-  if (status)
-      xmlStopParser(ctxt);
+  rb_protect2(prot_error, (VALUE)prot_args, data);
 }
 
 static VALUE
@@ -362,18 +324,13 @@ prot_cdata_block(VALUE _args)
     return rb_funcall(args[0], id_cdata_block, 1, args[1]);
 }
 
-static void cdata_block(void * ctx, const xmlChar *value, int len)
+static void cdata_block(void *user_data, const xmlChar *value, int len)
 {
-    int status;
+    struct xml_sax_parser_data *data = (struct xml_sax_parser_data *)user_data;
     VALUE args[2];
-    xmlParserCtxtPtr ctxt = (xmlParserCtxtPtr)ctx;
-    struct xml_sax_parser_data *data = (struct xml_sax_parser_data *)(ctxt->sax->_private);
-    VALUE doc = data->handler;
-    args[0] = doc;
+    args[0] = data->handler;
     args[1] = NOKOGIRI_STR_NEW(value, len);
-    rb_protect(prot_cdata_block, (VALUE)args, &status);
-    if (status)
-        xmlStopParser(ctxt);
+    rb_protect2(prot_cdata_block, (VALUE)args, data);
 }
 
 xmlSAXHandler nokogiriSAXHandlerPrototype =

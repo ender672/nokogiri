@@ -22,12 +22,14 @@ initialize(int argc, VALUE *argv, VALUE self)
 
     Data_Get_Struct(self, struct xml_sax_parser_data, data);
 
-    ctx = htmlCreatePushParserCtxt(&nokogiriSAXHandlerPrototype, NULL, NULL, 0,
-				   filename, enc);
+    ctx = htmlCreatePushParserCtxt(&nokogiriSAXHandlerPrototype, (void *)data,
+				   NULL, 0, filename, enc);
     if (!ctx)
-      rb_raise(rb_eRuntimeError, "Could not create a parser context");
+	rb_raise(rb_eRuntimeError, "Could not create a parser context");
 
-    ctx->sax->_private = (void *)data;
+    if (data->ctx)
+	xmlFreeParserCtxt(data->ctx);
+
     ctx->sax2 = 1;
     data->handler = doc;
     data->ctx = (xmlParserCtxtPtr)ctx;
@@ -38,26 +40,24 @@ initialize(int argc, VALUE *argv, VALUE self)
 static VALUE
 write2(VALUE self, const char *chunk, int size, int last_chunk)
 {
-    xmlParserCtxtPtr ctx;
     struct xml_sax_parser_data *data;
-    int ret;
+    int status, ret;
     Data_Get_Struct(self, struct xml_sax_parser_data, data);
 
-    ctx = data->ctx;
-
-    if (!ctx)
+    if (!data->ctx)
       rb_raise(rb_eRuntimeError, "Parser is Uninitialized.");
 
-    ret = htmlParseChunk(ctx, chunk, size, last_chunk);
+    ret = htmlParseChunk(data->ctx, chunk, size, last_chunk);
 
-    if (data->status)
-	rb_jump_tag(data->status);
+    if (data->status) {
+	status = data->status;
+        data->status = 0;
+	rb_jump_tag(status);
+    }
 
-    if (ret) {
-	if (!(ctx->options & XML_PARSE_RECOVER)) {
-	    xmlErrorPtr e = xmlCtxtGetLastError(ctx);
-	    Nokogiri_error_raise(NULL, e);
-	}
+    if (ret && !(data->ctx->options & XML_PARSE_RECOVER)) {
+	xmlErrorPtr e = xmlCtxtGetLastError(data->ctx);
+	Nokogiri_error_raise(NULL, e);
     }
 
     return self;
