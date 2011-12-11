@@ -391,6 +391,4 @@ void init_xml_sax_parser()
   id_cAttribute     = rb_intern("Attribute");
   id_start_element_namespace = rb_intern("start_element_namespace");
   id_end_element_namespace = rb_intern("end_element_namespace");
-
-  xmlSetStructuredErrorFunc(NULL, NULL);
 }

@@ -11,8 +11,11 @@ static void
 deallocate(struct xml_sax_parser_data *data)
 {
     NOKOGIRI_DEBUG_START(data->ctx);
-    if (data->ctx)
-	xmlFreeParserCtxt(data->ctx);
+    if (data->ctx) {
+	    if (data->ctx->myDoc)
+		xmlFreeDoc(data->ctx->myDoc);
+	    xmlFreeParserCtxt(data->ctx);
+    }
     NOKOGIRI_DEBUG_END(data->ctx);
     free(data);
 }
